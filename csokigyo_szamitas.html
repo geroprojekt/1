@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Csőkígyó Interaktív Számítás</title>
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --secondary: #3b82f6;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #334155;
+            --accent: #ef4444;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 { color: var(--primary); text-align: center; border-bottom: 2px solid var(--secondary); padding-bottom: 10px; }
+        h2 { color: var(--primary); margin-top: 30px; border-left: 4px solid var(--secondary); padding-left: 10px; }
+        .card {
+            background-color: var(--card-bg);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+        }
+        .slider-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            background: #f1f5f9;
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+        .slider-group label { flex: 1; font-weight: bold; }
+        .slider-group input[type="range"] { flex: 1; margin: 0 15px; cursor: pointer; }
+        .slider-value { flex: 0 0 110px; text-align: right; font-weight: bold; color: var(--primary); font-size: 1.1em;}
+        
+        .formula-box {
+            background-color: #e0f2fe;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Cambria Math', 'Times New Roman', serif;
+            text-align: center;
+            font-size: 1.2em;
+            margin: 20px 0;
+            overflow-x: auto;
+            color: #0f172a;
+        }
+        .result-highlight {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: var(--accent);
+            background: #fee2e2;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        
+        /* Törtek formázása CSS-el */
+        .math-line { display: inline-flex; align-items: center; justify-content: center; flex-wrap: wrap; }
+        .frac {
+            display: inline-flex;
+            flex-direction: column;
+            vertical-align: middle;
+            margin: 0 0.2em;
+            text-align: center;
+            font-size: 0.9em;
+        }
+        .frac > .top { padding: 0.1em 0.3em; }
+        .frac > .bottom { border-top: 1px solid #0f172a; padding: 0.1em 0.3em; }
+        
+        ul { list-style-type: square; }
+        .note { font-size: 0.9em; color: #64748b; font-style: italic; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Csőkígyó hőátviteli számítása (Interaktív)</h1>
+    <p style="text-align: center; font-style: italic;">Analitikus levezetés és szennyeződési korrekció puffertárolókhoz</p>
+
+    <div class="card">
+        <h2>1. Állandók és Anyagi Jellemzők</h2>
+        <p>A számítás során a következő fix paraméterekkel dolgozunk (70°C-os fűtővíz és acél cső esetén):</p>
+        <ul>
+            <li>Fűtővíz kinematikai viszkozitása (&nu;): <b>0,41 · 10<sup>-6</sup> m²/s</b></li>
+            <li>Fűtővíz hővezetési tényezője (&lambda;<sub>v</sub>): <b>0,66 W/mK</b></li>
+            <li>Fűtővíz Prandtl-száma (Pr): <b>2,5</b></li>
+            <li>Szénacél cső hővezetési tényezője (&lambda;<sub>cső</sub>): <b>50 W/mK</b></li>
+            <li>Külső oldali hőátadási tényező a tárolóban (&alpha;<sub>k</sub>): <b>400 W/m²K</b></li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h2>2. Bemeneti Paraméterek</h2>
+        <p>Állítsd be az áramlási és geometriai jellemzőket!</p>
+        
+        <div class="slider-group">
+            <label>Fűtővíz áramlási sebessége (v):</label>
+            <input type="range" id="in-v" min="0.1" max="2.0" step="0.1" value="0.8">
+            <span class="slider-value"><span id="val-v">0.8</span> m/s</span>
+        </div>
+
+        <div class="slider-group">
+            <label>Cső belső átmérője (d<sub>b</sub>):</label>
+            <input type="range" id="in-db" min="10" max="40" step="1" value="20">
+            <span class="slider-value"><span id="val-db">20</span> mm</span>
+        </div>
+
+        <div class="slider-group">
+            <label>Cső külső átmérője (d<sub>k</sub>):</label>
+            <input type="range" id="in-dk" min="12" max="50" step="1" value="24">
+            <span class="slider-value"><span id="val-dk">24</span> mm</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>3. Belső hőátadási tényező (&alpha;<sub>b</sub>)</h2>
+        <div class="formula-box math-line">
+            Re = <div class="frac"><div class="top">v &middot; d<sub>b</sub></div><div class="bottom">&nu;</div></div>
+            &nbsp;=&nbsp; <span class="result-highlight" id="out-re" style="margin-right: 10px;">39 024</span>
+            (&nbsp;<strong id="out-flow" style="color:var(--secondary);">Turbulens áramlás</strong>&nbsp;)
+        </div>
+        <p>A Nusselt-szám (Dittus-Boelter egyenlet) és a belső hőátadási tényező:</p>
+        <div class="formula-box math-line">
+            Nu = 0,023 &middot; Re<sup>0,8</sup> &middot; Pr<sup>0,3</sup> = <span class="result-highlight" id="out-nu">142</span>
+        </div>
+        <div class="formula-box math-line">
+            &alpha;<sub>b</sub> = <div class="frac"><div class="top">Nu &middot; &lambda;<sub>v</sub></div><div class="bottom">d<sub>b</sub></div></div> = <span class="result-highlight"><span id="out-alphab">4686</span> W/m²K</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>4. Eredő hőátbocsátási tényező (k<sub>cső</sub>)</h2>
+        <p>A dokumentációban szereplő (2)-es képlet alapján elsőként a <b>vonalmenti</b> hőátbocsátási tényezőt határozzuk meg (ami 1 méter csőre vonatkozik, így a mértékegysége W/mK):</p>
+        
+        <div class="formula-box math-line">
+            k<sub>cső(vonalmenti)</sub> = 
+            <div class="frac">
+                <div class="top">1</div>
+                <div class="bottom math-line">
+                    <div class="frac"><div class="top">1</div><div class="bottom">d<sub>b</sub>&pi;&alpha;<sub>b</sub></div></div>
+                    &nbsp;+&nbsp;
+                    <div class="frac"><div class="top">1</div><div class="bottom">2&pi;&lambda;<sub>cső</sub></div></div>
+                    &nbsp;&middot;&nbsp;ln<div class="frac"><div class="top">d<sub>k</sub></div><div class="bottom">d<sub>b</sub></div></div>
+                    &nbsp;+&nbsp;
+                    <div class="frac"><div class="top">1</div><div class="bottom">d<sub>k</sub>&pi;&alpha;<sub>k</sub></div></div>
+                </div>
+            </div>
+        </div>
+
+        <p>A kiszámolt rész-ellenállások és az eredmény:</p>
+        <ul>
+            <li>Belső ellenállás: <span id="out-rb">0.003396</span> mK/W</li>
+            <li>Csőfal ellenállása: <span id="out-rfal">0.000580</span> mK/W</li>
+            <li>Külső ellenállás: <span id="out-rk">0.033157</span> mK/W</li>
+        </ul>
+        <div class="formula-box math-line">
+            k<sub>cső(vonalmenti)</sub> = <span class="result-highlight"><span id="out-k-vonal">26.9</span> W/mK</span>
+        </div>
+
+        <p>A tervezési gyakorlatban ezt átszámítjuk a külső felületre vonatkoztatott (W/m²K) értékre, osztva a külső kerülettel (d<sub>k</sub>&middot;&pi;):</p>
+        <div class="formula-box math-line">
+            k<sub>tiszta(felületi)</sub> = <div class="frac"><div class="top">k<sub>cső(vonalmenti)</sub></div><div class="bottom">d<sub>k</sub> &middot; &pi;</div></div> = <span class="result-highlight"><span id="out-ktiszta">357</span> W/m²K</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>5. Üzemi állapot és szennyeződések (R<sub>f</sub>)</h2>
+        <p>Állítsd be a lerakódások (fouling factor) mértékét:</p>
+
+        <div class="slider-group">
+            <label>Fűtővíz oldali lerakódás (R<sub>f,b</sub>):</label>
+            <input type="range" id="in-rfb" min="0.0000" max="0.0010" step="0.0001" value="0.0002">
+            <span class="slider-value"><span id="val-rfb">0.0002</span> m²K/W</span>
+        </div>
+
+        <div class="slider-group">
+            <label>HMV oldali vízkő (R<sub>f,k</sub>):</label>
+            <input type="range" id="in-rfk" min="0.0000" max="0.0010" step="0.0001" value="0.0002">
+            <span class="slider-value"><span id="val-rfk">0.0002</span> m²K/W</span>
+        </div>
+
+        <div class="formula-box math-line">
+            k<sub>valós</sub> = <div class="frac"><div class="top">1</div><div class="bottom">(1 / k<sub>tiszta(felületi)</sub>) + R<sub>f,b</sub> + R<sub>f,k</sub></div></div> = <span class="result-highlight"><span id="out-kvalos">312</span> W/m²K</span>
+        </div>
+
+        <p style="font-size: 1.1em; text-align: center; margin-top: 20px;">
+            A lerakódások miatt a csőkígyó hőleadó képessége 
+            <span class="result-highlight"><span id="out-drop">12.6</span>%-kal</span> csökkent!
+        </p>
+    </div>
+
+</div>
+
+<script>
+    function calculate() {
+        // Értékek kinyerése
+        const v = parseFloat(document.getElementById('in-v').value);
+        let db = parseFloat(document.getElementById('in-db').value);
+        let dk = parseFloat(document.getElementById('in-dk').value);
+        const Rfb = parseFloat(document.getElementById('in-rfb').value);
+        const Rfk = parseFloat(document.getElementById('in-rfk').value);
+
+        if (dk <= db) { dk = db + 2; document.getElementById('in-dk').value = dk; }
+
+        // Kijelzők frissítése
+        document.getElementById('val-v').innerText = v.toFixed(1);
+        document.getElementById('val-db').innerText = db;
+        document.getElementById('val-dk').innerText = dk;
+        document.getElementById('val-rfb').innerText = Rfb.toFixed(4);
+        document.getElementById('val-rfk').innerText = Rfk.toFixed(4);
+
+        // Állandók
+        const nu = 0.41e-6;
+        const lambda_v = 0.66;
+        const Pr = 2.5;
+        const lambda_cs = 50;
+        const alpha_k = 400;
+        const pi = Math.PI;
+
+        const db_m = db / 1000;
+        const dk_m = dk / 1000;
+
+        // Reynolds, Nusselt, alpha_b
+        const Re = (v * db_m) / nu;
+        document.getElementById('out-re').innerText = Math.round(Re).toLocaleString('hu-HU');
+        document.getElementById('out-flow').innerText = Re > 10000 ? "Turbulens áramlás" : (Re < 2300 ? "Lamináris áramlás" : "Átmeneti áramlás");
+        const Nu = 0.023 * Math.pow(Re, 0.8) * Math.pow(Pr, 0.3);
+        document.getElementById('out-nu').innerText = Math.round(Nu);
+        const alpha_b = (Nu * lambda_v) / db_m;
+        document.getElementById('out-alphab').innerText = Math.round(alpha_b);
+
+        // A KÉPEN LÁTHATÓ (2)-ES KÉPLET SZÁMÍTÁSAI (W/mK)
+        const Rb_vonal = 1 / (db_m * pi * alpha_b);
+        const Rfal_vonal = (1 / (2 * pi * lambda_cs)) * Math.log(dk_m / db_m);
+        const Rk_vonal = 1 / (dk_m * pi * alpha_k);
+        
+        const sumR_vonal = Rb_vonal + Rfal_vonal + Rk_vonal;
+        const k_vonalmenti = 1 / sumR_vonal;
+
+        document.getElementById('out-rb').innerText = Rb_vonal.toFixed(6);
+        document.getElementById('out-rfal').innerText = Rfal_vonal.toFixed(6);
+        document.getElementById('out-rk').innerText = Rk_vonal.toFixed(6);
+        document.getElementById('out-k-vonal').innerText = k_vonalmenti.toFixed(1);
+
+        // Visszaszámolás felületi W/m²K értékre
+        const k_tiszta = k_vonalmenti / (dk_m * pi);
+        document.getElementById('out-ktiszta').innerText = Math.round(k_tiszta);
+
+        // Szennyeződés és romlás
+        const k_valos = 1 / ( (1/k_tiszta) + Rfb + Rfk );
+        document.getElementById('out-kvalos').innerText = Math.round(k_valos);
+        const drop = (1 - (k_valos / k_tiszta)) * 100;
+        document.getElementById('out-drop').innerText = drop.toFixed(1);
+    }
+
+    const inputs = document.querySelectorAll('input[type="range"]');
+    inputs.forEach(input => input.addEventListener('input', calculate));
+    calculate();
+</script>
+
+</body>
+</html>
